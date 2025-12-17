@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jídelníček Hamzova léčebna - GitHub Pages Demo</title>
+    <meta name="description" content="Demo zobrazení jídelníčku Hamzovy léčebny přes ISP API">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .github-notice {
+            background: #0366d6;
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .github-notice a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            min-height: calc(100vh - 44px);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #0066cc;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        h1 {
+            color: #0066cc;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .demo-badge {
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+        
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .date-selector label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .date-selector input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .date-selector button {
+            padding: 8px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .date-selector button:hover {
+            background: #0052a3;
+        }
+        
+        .date-selector button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .proxy-status {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .proxy-status.success {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+        
+        .proxy-status.error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.success {
+            background: #10b981;
+            animation: none;
+        }
+        
+        .status-indicator.error {
+            background: #ef4444;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .menu-day {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .menu-date {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        
+        .meal-section {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .meal-type {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            text-transform: capitalize;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+        
+        .meal-type.snidane { border-bottom-color: #fbbf24; }
+        .meal-type.obed { border-bottom-color: #10b981; }
+        .meal-type.vecere { border-bottom-color: #8b5cf6; }
+        
+        .meal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .meal-option {
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 4px;
+            border-left: 3px solid #0066cc;
+        }
+        
+        .meal-option-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .option-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #666;
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        
+        .meal-name {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .allergens {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .allergen {
+            font-size: 11px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid #fbbf24;
+        }
+        
+        .allergen-code {
+            font-weight: 600;
+        }
+        
+        .no-menu {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .week-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .week-navigation button {
+            padding: 6px 15px;
+            background: #f3f4f6;
+            color: #666;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .week-navigation button:hover {
+            background: #e5e7eb;
+        }
+        
+        .week-navigation button:disabled {
+            background: #fafafa;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .footer a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsivní design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .date-selector {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .week-navigation {
+                width: 100%;
+            }
+            
+            .week-navigation button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="github-notice">
+        📍 Toto je demo verze běžící na GitHub Pages. Pro produkční použití je nutné implementovat vlastní backend.
+        <a href="https://github.com/YOUR_USERNAME/hamzova-lecebna-jidelnicek" target="_blank">Zobrazit kód</a>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Jídelníček Hamzova léčebna <span class="demo-badge">Demo</span></h1>
+            </div>
+            <div class="date-selector">
+                <label for="dateFrom">Od:</label>
+                <input type="date" id="dateFrom" />
+                <label for="dateTo">Do:</label>
+                <input type="date" id="dateTo" />
+                <button id="loadBtn" onclick="loadMenu()">Načíst</button>
+            </div>
+        </div>
+        
+        <div id="proxyStatus" class="proxy-status">
+            <div class="status-indicator"></div>
+            <span>Připojování k API serveru...</span>
+        </div>
+        
+        <div class="week-navigation">
+            <button id="prevWeekBtn" onclick="loadPreviousWeek()">← Předchozí týden</button>
+            <button id="currentWeekBtn" onclick="loadCurrentWeek()">Aktuální týden</button>
+            <button id="nextWeekBtn" onclick="loadNextWeek()">Následující týden →</button>
+        </div>
+        
+        <div id="menuContent">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>Načítám jídelníček...</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                💡 Tato demo verze používá CORS proxy pro přístup k API. 
+                V produkci použijte vlastní backend řešení.
+            </p>
+            <p>
+                <a href="DOKUMENTACE.md" target="_blank">📖 Dokumentace</a> | 
+                <a href="integrace-iframe-priklady.html" target="_blank">🔧 Příklady integrace</a> |
+                <a href="https://github.com/YOUR_USERNAME/hamzova-lecebna-jidelnicek/issues" target="_blank">🐛 Nahlásit problém</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Konfigurace
+        const API_BASE_URL = 'https://strava.hamzova-lecebna.cz/isp/api/catering/menu/full';
+        const VYDEJNY_ID = 1;
+        
+        // CORS Proxy pro GitHub Pages
+        // Seznam proxy serverů - některé mohou být nedostupné
+        const CORS_PROXIES = [
+            {
+                name: 'CORS Proxy IO',
+                url: 'https://corsproxy.io/?',
+                encode: true
+            },
+            {
+                name: 'All Origins',
+                url: 'https://api.allorigins.win/raw?url=',
+                encode: true
+            },
+            {
+                name: 'CORS SH',
+                url: 'https://proxy.cors.sh/',
+                encode: false
+            }
+        ];
+        
+        let currentProxyIndex = 0;
+        let isLoading = false;
+        
+        // Pomocné funkce
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+        
+        function formatDateCzech(dateStr) {
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            const date = new Date(year, month - 1, day);
+            
+            const days = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+            const dayName = days[date.getDay()];
+            
+            return `${dayName} ${day}.${month}.${year}`;
+        }
+        
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+        
+        function getWeekEnd(date) {
+            const start = getWeekStart(date);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            return end;
+        }
+        
+        function updateProxyStatus(status, message) {
+            const statusDiv = document.getElementById('proxyStatus');
+            const indicator = statusDiv.querySelector('.status-indicator');
+            const text = statusDiv.querySelector('span');
+            
+            statusDiv.className = `proxy-status ${status}`;
+            indicator.className = `status-indicator ${status}`;
+            text.textContent = message;
+        }
+        
+        function setLoadingState(loading) {
+            isLoading = loading;
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = loading;
+            });
+        }
+        
+        // Načtení jídelníčku s fallback na různé proxy
+        async function fetchMenuWithFallback(dateFrom, dateTo, proxyIndex = 0) {
+            if (proxyIndex >= CORS_PROXIES.length) {
+                throw new Error('Všechny proxy servery selhaly. Zkuste to prosím později.');
+            }
+            
+            const proxy = CORS_PROXIES[proxyIndex];
+            const originalUrl = `${API_BASE_URL}/${VYDEJNY_ID}?beg=${dateFrom}&end=${dateTo}`;
+            const url = proxy.url + (proxy.encode ? encodeURIComponent(originalUrl) : originalUrl);
+            
+            updateProxyStatus('', `Zkouším ${proxy.name}...`);
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateProxyStatus('success', `Připojeno přes ${proxy.name}`);
+                currentProxyIndex = proxyIndex;
+                return data;
+                
+            } catch (error) {
+                console.error(`${proxy.name} selhalo:`, error);
+                
+                // Zkusit další proxy
+                return await fetchMenuWithFallback(dateFrom, dateTo, proxyIndex + 1);
+            }
+        }
+        
+        async function fetchMenu(dateFrom, dateTo) {
+            return await fetchMenuWithFallback(dateFrom, dateTo, currentProxyIndex);
+        }
+        
+        // Zobrazení jídelníčku
+        function displayMenu(data) {
+            const contentDiv = document.getElementById('menuContent');
+            
+            if (!data || data.length === 0) {
+                contentDiv.innerHTML = '<div class="no-menu">Pro vybrané období není k dispozici žádný jídelníček.</div>';
+                return;
+            }
+            
+            // Seskupení dat
+            const menuByDate = {};
+            
+            data.forEach(item => {
+                if (!menuByDate[item.date]) {
+                    menuByDate[item.date] = {};
+                }
+                if (!menuByDate[item.date][item.meal_type]) {
+                    menuByDate[item.date][item.meal_type] = [];
+                }
+                menuByDate[item.date][item.meal_type].push(item);
+            });
+            
+            // Vytvoření HTML
+            let html = '';
+            
+            Object.keys(menuByDate).sort().forEach(date => {
+                html += `<div class="menu-day">`;
+                html += `<div class="menu-date">${formatDateCzech(date)}</div>`;
+                
+                const mealOrder = ['snídaně', 'oběd', 'večeře'];
+                
+                mealOrder.forEach(mealType => {
+                    if (menuByDate[date][mealType]) {
+                        const mealClass = mealType.toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '');
+                        
+                        html += `<div class="meal-section">`;
+                        html += `<div class="meal-type ${mealClass}">${mealType}</div>`;
+                        html += `<div class="meal-options">`;
+                        
+                        menuByDate[date][mealType].forEach(meal => {
+                            html += `<div class="meal-option">`;
+                            
+                            if (meal.option && meal.option !== '0') {
+                                html += `<div class="meal-option-header">`;
+                                html += `<span class="option-label">Varianta ${meal.option}</span>`;
+                                html += `</div>`;
+                            }
+                            
+                            html += `<div class="meal-name">${meal.meal || 'Bez názvu'}</div>`;
+                            
+                            if (meal.allergens && meal.allergens.length > 0) {
+                                html += `<div class="allergens">`;
+                                meal.allergens.forEach(allergen => {
+                                    html += `<span class="allergen">`;
+                                    html += `<span class="allergen-code">${allergen.code}</span> `;
+                                    html += `${allergen.name}`;
+                                    html += `</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                            
+                            html += `</div>`;
+                        });
+                        
+                        html += `</div>`;
+                        html += `</div>`;
+                    }
+                });
+                
+                html += `</div>`;
+            });
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function displayError(message) {
+            const contentDiv = document.getElementById('menuContent');
+            contentDiv.innerHTML = `
+                <div class="error">
+                    <strong>⚠️ Chyba při načítání jídelníčku</strong><br>
+                    ${message}<br><br>
+                    <small>
+                        Toto je demo verze používající veřejné CORS proxy servery. 
+                        Pro spolehlivé fungování je nutný vlastní backend.
+                    </small>
+                </div>
+            `;
+            updateProxyStatus('error', 'Nepodařilo se připojit k API');
+        }
+        
+        // Načtení jídelníčku
+        async function loadMenu() {
+            if (isLoading) return;
+            
+            const dateFromInput = document.getElementById('dateFrom');
+            const dateToInput = document.getElementById('dateTo');
+            
+            const dateFrom = formatDate(new Date(dateFromInput.value));
+            const dateTo = formatDate(new Date(dateToInput.value));
+            
+            const contentDiv = document.getElementById('menuContent');
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Načítám jídelníček...</div>
+                </div>
+            `;
+            
+            setLoadingState(true);
+            
+            try {
+                const data = await fetchMenu(dateFrom, dateTo);
+                displayMenu(data);
+            } catch (error) {
+                displayError(error.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+        
+        // Navigace po týdnech
+        function loadCurrentWeek() {
+            const today = new Date();
+            const weekStart = getWeekStart(today);
+            const weekEnd = getWeekEnd(today);
+            
+            document.getElementById('dateFrom').value = weekStart.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = weekEnd.toISOString().split('T')[0];
+            
+            loadMenu();
+        }
+        
+        function loadPreviousWeek() {
+            const currentFrom = new Date(document.getElementById('dateFrom').value);
+            const weekStart = new Date(currentFrom);
+            weekStart.setDate(currentFrom.getDate() - 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('dateFrom').value = weekStart.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = weekEnd.toISOString().split('T')[0];
+            
+            loadMenu();
+        }
+        
+        function loadNextWeek() {
+            const currentFrom = new Date(document.getElementById('dateFrom').value);
+            const weekStart = new Date(currentFrom);
+            weekStart.setDate(currentFrom.getDate() + 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('dateFrom').value = weekStart.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = weekEnd.toISOString().split('T')[0];
+            
+            loadMenu();
+        }
+        
+        // Inicializace
+        window.addEventListener('DOMContentLoaded', function() {
+            // Nastavení aktuálního týdne
+            const today = new Date();
+            const weekStart = getWeekStart(today);
+            const weekEnd = getWeekEnd(today);
+            
+            document.getElementById('dateFrom').value = weekStart.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = weekEnd.toISOString().split('T')[0];
+            
+            // Automatické načtení
+            loadCurrentWeek();
+            
+            // Update GitHub link
+            const githubLinks = document.querySelectorAll('a[href*="YOUR_USERNAME"]');
+            githubLinks.forEach(link => {
+                // Získat username z URL, pokud je stránka již na GitHubu
+                const match = window.location.hostname.match(/(.+)\.github\.io/);
+                if (match) {
+                    link.href = link.href.replace('YOUR_USERNAME', match[1]);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
