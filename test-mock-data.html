@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jídelníček Test - Mock Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-mode {
+            background: #ff9800;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #0066cc;
+            color: white;
+        }
+        
+        button:hover {
+            background: #0052a3;
+        }
+        
+        .data-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        #menuDisplay {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-mode">
+        ⚠️ TESTOVACÍ REŽIM - Mock Data
+    </div>
+    
+    <div class="controls">
+        <h2>Test různých formátů dat</h2>
+        <button onclick="testFormat1()">Test: Správné pole</button>
+        <button onclick="testFormat2()">Test: Objekt s data klíčem</button>
+        <button onclick="testFormat3()">Test: AllOrigins formát</button>
+        <button onclick="testFormat4()">Test: Jediný objekt</button>
+        <button onclick="testFormat5()">Test: Prázdná odpověď</button>
+        <button onclick="testRealAPI()">Test: Reálné API</button>
+    </div>
+    
+    <div class="data-preview">
+        <h3>Surová data:</h3>
+        <pre id="rawData">Klikněte na tlačítko pro test...</pre>
+    </div>
+    
+    <div class="data-preview">
+        <h3>Zpracovaná data:</h3>
+        <pre id="processedData">...</pre>
+    </div>
+    
+    <div id="menuDisplay">
+        <h3>Zobrazení menu:</h3>
+        <div id="menuContent">...</div>
+    </div>
+
+    <script>
+        // Mock data pro testování
+        const mockMenuItem = {
+            date: "20250117",
+            meal_type: "oběd",
+            option: "1",
+            meal: "Hovězí guláš s knedlíkem",
+            allergens: [
+                { code: "1", name: "Lepek" },
+                { code: "3", name: "Vejce" }
+            ]
+        };
+        
+        const mockMenuArray = [
+            {
+                date: "20250117",
+                meal_type: "snídaně",
+                option: "0",
+                meal: "Chléb s máslem a džemem",
+                allergens: [
+                    { code: "1", name: "Lepek" },
+                    { code: "7", name: "Mléko" }
+                ]
+            },
+            {
+                date: "20250117",
+                meal_type: "oběd",
+                option: "1",
+                meal: "Hovězí guláš s knedlíkem",
+                allergens: [
+                    { code: "1", name: "Lepek" },
+                    { code: "3", name: "Vejce" }
+                ]
+            },
+            {
+                date: "20250117",
+                meal_type: "oběd",
+                option: "2",
+                meal: "Smažený sýr s hranolky",
+                allergens: [
+                    { code: "1", name: "Lepek" },
+                    { code: "7", name: "Mléko" },
+                    { code: "3", name: "Vejce" }
+                ]
+            },
+            {
+                date: "20250117",
+                meal_type: "večeře",
+                option: "0",
+                meal: "Těstovinový salát",
+                allergens: [
+                    { code: "1", name: "Lepek" }
+                ]
+            }
+        ];
+        
+        // Funkce pro zpracování API odpovědi (stejná jako v hlavním souboru)
+        function processApiResponse(rawData) {
+            // Pokud je to přímo pole, vrátíme ho
+            if (Array.isArray(rawData)) {
+                return rawData;
+            }
+            
+            // Pokud je to objekt, zkusíme najít pole v různých možných klíčích
+            if (typeof rawData === 'object' && rawData !== null) {
+                // Možné klíče, kde může být pole dat
+                const possibleKeys = ['data', 'items', 'menu', 'meals', 'result', 'results'];
+                
+                for (const key of possibleKeys) {
+                    if (rawData[key] && Array.isArray(rawData[key])) {
+                        return rawData[key];
+                    }
+                }
+                
+                // Pokud objekt má vlastnost contents (AllOrigins proxy)
+                if (rawData.contents) {
+                    try {
+                        const parsed = JSON.parse(rawData.contents);
+                        return processApiResponse(parsed);
+                    } catch (e) {
+                        console.error('Failed to parse contents:', e);
+                    }
+                }
+                
+                // Pokud je to jeden objekt jídla, zabalíme ho do pole
+                if (rawData.date && rawData.meal_type) {
+                    return [rawData];
+                }
+            }
+            
+            // Pokud je to string, zkusíme ho parsovat
+            if (typeof rawData === 'string') {
+                try {
+                    const parsed = JSON.parse(rawData);
+                    return processApiResponse(parsed);
+                } catch (e) {
+                    console.error('Failed to parse string:', e);
+                }
+            }
+            
+            // Pokud nic z toho, vrátíme prázdné pole
+            return [];
+        }
+        
+        function displayResults(rawData) {
+            // Zobraz surová data
+            document.getElementById('rawData').textContent = JSON.stringify(rawData, null, 2);
+            
+            // Zpracuj data
+            const processed = processApiResponse(rawData);
+            document.getElementById('processedData').textContent = JSON.stringify(processed, null, 2);
+            
+            // Zobraz menu
+            displayMenu(processed);
+        }
+        
+        function displayMenu(data) {
+            const contentDiv = document.getElementById('menuContent');
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                contentDiv.innerHTML = '<p style="color: red;">Žádná data k zobrazení</p>';
+                return;
+            }
+            
+            let html = '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">';
+            html += `<h4>Počet položek: ${data.length}</h4>`;
+            
+            // Seskupení dat podle data
+            const menuByDate = {};
+            data.forEach(item => {
+                if (!item.date) return;
+                if (!menuByDate[item.date]) {
+                    menuByDate[item.date] = {};
+                }
+                const mealType = item.meal_type || 'Neurčeno';
+                if (!menuByDate[item.date][mealType]) {
+                    menuByDate[item.date][mealType] = [];
+                }
+                menuByDate[item.date][mealType].push(item);
+            });
+            
+            Object.keys(menuByDate).forEach(date => {
+                html += `<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 4px;">`;
+                html += `<strong>Datum: ${date}</strong><br>`;
+                
+                Object.keys(menuByDate[date]).forEach(mealType => {
+                    html += `<div style="margin-left: 20px; margin-top: 10px;">`;
+                    html += `<strong>${mealType}:</strong><br>`;
+                    
+                    menuByDate[date][mealType].forEach(meal => {
+                        html += `<div style="margin-left: 20px; margin-top: 5px;">`;
+                        if (meal.option) {
+                            html += `Varianta ${meal.option}: `;
+                        }
+                        html += meal.meal || 'Bez názvu';
+                        
+                        if (meal.allergens && meal.allergens.length > 0) {
+                            html += '<br><small>Alergeny: ';
+                            html += meal.allergens.map(a => `${a.code}-${a.name}`).join(', ');
+                            html += '</small>';
+                        }
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            contentDiv.innerHTML = html;
+        }
+        
+        // Testovací funkce
+        function testFormat1() {
+            console.log('Test: Správné pole');
+            displayResults(mockMenuArray);
+        }
+        
+        function testFormat2() {
+            console.log('Test: Objekt s data klíčem');
+            const data = {
+                status: 'success',
+                data: mockMenuArray
+            };
+            displayResults(data);
+        }
+        
+        function testFormat3() {
+            console.log('Test: AllOrigins formát');
+            const data = {
+                contents: JSON.stringify(mockMenuArray),
+                status: { http_code: 200 }
+            };
+            displayResults(data);
+        }
+        
+        function testFormat4() {
+            console.log('Test: Jediný objekt');
+            displayResults(mockMenuItem);
+        }
+        
+        function testFormat5() {
+            console.log('Test: Prázdná odpověď');
+            displayResults([]);
+        }
+        
+        async function testRealAPI() {
+            console.log('Test: Reálné API');
+            const url = 'https://corsproxy.io/?' + encodeURIComponent(
+                'https://strava.hamzova-lecebna.cz/isp/api/catering/menu/full/1?beg=20250117&end=20250117'
+            );
+            
+            try {
+                document.getElementById('rawData').textContent = 'Načítám z API...';
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                document.getElementById('rawData').textContent = 'Chyba: ' + error.message;
+                document.getElementById('processedData').textContent = 'Chyba při načítání dat';
+                document.getElementById('menuContent').innerHTML = '<p style="color: red;">Chyba při načítání dat z API</p>';
+            }
+        }
+        
+        // Automaticky načti první test
+        window.addEventListener('DOMContentLoaded', () => {
+            testFormat1();
+        });
+    </script>
+</body>
+</html>
