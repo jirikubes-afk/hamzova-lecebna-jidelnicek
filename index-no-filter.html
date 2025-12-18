@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jídelníček Hamzova léčebna - NO FILTER TEST</title>
+    <meta name="description" content="Testovací verze bez filtrování">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .warning {
+            background: #ff9800;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #0066cc;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        h1 {
+            color: #0066cc;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .debug-info {
+            background: #f0f9ff;
+            border: 2px solid #0066cc;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .debug-info h3 {
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+        
+        .debug-info pre {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .date-selector label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .date-selector input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .date-selector button {
+            padding: 8px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .date-selector button:hover {
+            background: #0052a3;
+        }
+        
+        .date-selector button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .menu-day {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .menu-date {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        
+        .meal-section {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .meal-type {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .meal-type.unknown {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .meal-option {
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 4px;
+            border-left: 3px solid #0066cc;
+            margin-bottom: 10px;
+        }
+        
+        .raw-data {
+            background: #fffbeb;
+            border: 1px solid #fbbf24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .no-menu {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="warning">
+            ⚠️ TESTOVACÍ VERZE - Zobrazuje VŠECHNA data bez filtrování!
+        </div>
+        
+        <div class="header">
+            <div>
+                <h1>Jídelníček - TEST (no filter)</h1>
+            </div>
+            <div class="date-selector">
+                <label for="dateFrom">Od:</label>
+                <input type="date" id="dateFrom" />
+                <label for="dateTo">Do:</label>
+                <input type="date" id="dateTo" />
+                <button onclick="loadMenu()">Načíst</button>
+            </div>
+        </div>
+        
+        <button onclick="loadToday()" style="margin-bottom: 20px;">Načíst dnešní jídelníček</button>
+        
+        <div class="debug-info">
+            <h3>📊 Debug informace:</h3>
+            <div id="debugStats"></div>
+            <h4>Surová data z API:</h4>
+            <pre id="rawApiData">Zatím žádná data...</pre>
+            <h4>První položka (pokud existuje):</h4>
+            <pre id="firstItem">...</pre>
+        </div>
+        
+        <div id="menuContent">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>Načítám jídelníček...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Konfigurace
+        const API_BASE_URL = 'https://strava.hamzova-lecebna.cz/isp/api/catering/menu/full';
+        const VYDEJNY_ID = 1;
+        
+        // CORS Proxy
+        const CORS_PROXIES = [
+            {
+                name: 'CORS Proxy IO',
+                url: 'https://corsproxy.io/?',
+                encode: true
+            },
+            {
+                name: 'All Origins',
+                url: 'https://api.allorigins.win/raw?url=',
+                encode: true
+            }
+        ];
+        
+        let currentProxyIndex = 0;
+        
+        // Pomocné funkce
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+        
+        function formatDateCzech(dateStr) {
+            if (!dateStr) return 'Neznámé datum';
+            
+            try {
+                // Pokus o různé formáty
+                let year, month, day;
+                
+                if (dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
+                    year = parseInt(dateStr.substring(0, 4));
+                    month = parseInt(dateStr.substring(4, 6)) - 1;
+                    day = parseInt(dateStr.substring(6, 8));
+                } else if (dateStr.includes('-')) {
+                    const parts = dateStr.split('-');
+                    if (parts[0].length === 4) {
+                        year = parseInt(parts[0]);
+                        month = parseInt(parts[1]) - 1;
+                        day = parseInt(parts[2]);
+                    }
+                } else {
+                    return dateStr; // Vrátit původní, pokud nemůžeme parsovat
+                }
+                
+                const date = new Date(year, month, day);
+                const days = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+                const months = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 
+                              'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+                
+                return `${days[date.getDay()]} ${day}. ${months[date.getMonth()]} ${year}`;
+            } catch (e) {
+                return dateStr;
+            }
+        }
+        
+        // Zpracování API odpovědi - MINIMÁLNÍ, jen detekce pole
+        function processApiResponse(rawData) {
+            console.log('Processing raw data:', rawData);
+            
+            if (Array.isArray(rawData)) {
+                return rawData;
+            }
+            
+            if (typeof rawData === 'object' && rawData !== null) {
+                // Zkusit najít pole v objektu
+                const possibleKeys = ['data', 'items', 'menu', 'meals', 'result', 'results'];
+                
+                for (const key of possibleKeys) {
+                    if (rawData[key] && Array.isArray(rawData[key])) {
+                        console.log(`Found array in key: ${key}`);
+                        return rawData[key];
+                    }
+                }
+                
+                // AllOrigins wrapper
+                if (rawData.contents) {
+                    try {
+                        const parsed = JSON.parse(rawData.contents);
+                        return processApiResponse(parsed);
+                    } catch (e) {
+                        console.error('Failed to parse contents:', e);
+                    }
+                }
+                
+                // Pokud je to jeden objekt, zabalit do pole
+                if (rawData.date || rawData.meal || rawData.meal_type) {
+                    return [rawData];
+                }
+            }
+            
+            // String - pokusit se parsovat
+            if (typeof rawData === 'string') {
+                try {
+                    const parsed = JSON.parse(rawData);
+                    return processApiResponse(parsed);
+                } catch (e) {
+                    console.error('Failed to parse string:', e);
+                }
+            }
+            
+            console.warn('Could not process data, returning empty array');
+            return [];
+        }
+        
+        // Načtení dat
+        async function fetchMenu(dateFrom, dateTo) {
+            const proxy = CORS_PROXIES[currentProxyIndex];
+            const originalUrl = `${API_BASE_URL}/${VYDEJNY_ID}?beg=${dateFrom}&end=${dateTo}`;
+            const url = proxy.url + (proxy.encode ? encodeURIComponent(originalUrl) : originalUrl);
+            
+            console.log('Fetching URL:', url);
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const rawData = await response.json();
+                
+                // Zobrazit surová data
+                document.getElementById('rawApiData').textContent = JSON.stringify(rawData, null, 2);
+                
+                const data = processApiResponse(rawData);
+                
+                // Zobrazit první položku
+                if (data && data.length > 0) {
+                    document.getElementById('firstItem').textContent = JSON.stringify(data[0], null, 2);
+                } else {
+                    document.getElementById('firstItem').textContent = 'Žádné položky v datech';
+                }
+                
+                return data;
+                
+            } catch (error) {
+                console.error('Fetch failed:', error);
+                if (currentProxyIndex < CORS_PROXIES.length - 1) {
+                    currentProxyIndex++;
+                    return fetchMenu(dateFrom, dateTo);
+                }
+                throw error;
+            }
+        }
+        
+        // ZOBRAZENÍ BEZ JAKÉHOKOLIV FILTROVÁNÍ
+        function displayMenu(data) {
+            const contentDiv = document.getElementById('menuContent');
+            
+            // Debug statistiky
+            const stats = `
+                <strong>Počet položek:</strong> ${data ? data.length : 0}<br>
+                <strong>Typ dat:</strong> ${Array.isArray(data) ? 'Pole' : typeof data}<br>
+                <strong>První položka má klíče:</strong> ${data && data[0] ? Object.keys(data[0]).join(', ') : 'N/A'}
+            `;
+            document.getElementById('debugStats').innerHTML = stats;
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                contentDiv.innerHTML = '<div class="no-menu">Žádná data k zobrazení. Zkontrolujte debug informace výše.</div>';
+                return;
+            }
+            
+            // NEZFILTROVAT NIC - zobrazit všechno
+            const menuByDate = {};
+            
+            data.forEach((item, index) => {
+                // Získat datum - zkusit různé klíče
+                const date = item.date || item.Date || item.datum || `item_${index}`;
+                
+                if (!menuByDate[date]) {
+                    menuByDate[date] = {};
+                }
+                
+                // Získat typ jídla - zkusit různé klíče
+                const mealType = item.meal_type || item.mealType || item.type || item.typ || 'Bez typu';
+                
+                if (!menuByDate[date][mealType]) {
+                    menuByDate[date][mealType] = [];
+                }
+                
+                menuByDate[date][mealType].push(item);
+            });
+            
+            // Zobrazit vše
+            let html = '';
+            
+            Object.keys(menuByDate).forEach(date => {
+                html += `<div class="menu-day">`;
+                html += `<div class="menu-date">${formatDateCzech(date)}</div>`;
+                
+                Object.keys(menuByDate[date]).forEach(mealType => {
+                    html += `<div class="meal-section">`;
+                    html += `<div class="meal-type ${!mealType || mealType === 'Bez typu' ? 'unknown' : ''}">${mealType || 'Bez typu'}</div>`;
+                    
+                    menuByDate[date][mealType].forEach(item => {
+                        html += `<div class="meal-option">`;
+                        
+                        // Zobrazit název jídla - zkusit různé klíče
+                        const mealName = item.meal || item.name || item.nazev || item.jidlo || 'Bez názvu';
+                        html += `<strong>${mealName}</strong><br>`;
+                        
+                        // Zobrazit variantu, pokud existuje
+                        if (item.option) {
+                            html += `Varianta: ${item.option}<br>`;
+                        }
+                        
+                        // Zobrazit alergeny
+                        if (item.allergens && Array.isArray(item.allergens) && item.allergens.length > 0) {
+                            html += 'Alergeny: ';
+                            item.allergens.forEach(allergen => {
+                                html += `${allergen.code}-${allergen.name} `;
+                            });
+                            html += '<br>';
+                        }
+                        
+                        // Zobrazit VŠECHNY vlastnosti objektu (pro debug)
+                        html += `<div class="raw-data">`;
+                        html += `<strong>Všechna data položky:</strong><br>`;
+                        Object.keys(item).forEach(key => {
+                            if (key !== 'allergens') { // Alergeny už jsme zobrazili
+                                html += `${key}: ${JSON.stringify(item[key])}<br>`;
+                            }
+                        });
+                        html += `</div>`;
+                        
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            });
+            
+            contentDiv.innerHTML = html || '<div class="no-menu">Nepodařilo se vygenerovat HTML.</div>';
+        }
+        
+        // Načtení jídelníčku
+        async function loadMenu() {
+            const dateFromInput = document.getElementById('dateFrom');
+            const dateToInput = document.getElementById('dateTo');
+            
+            const dateFrom = formatDate(new Date(dateFromInput.value));
+            const dateTo = formatDate(new Date(dateToInput.value));
+            
+            console.log('Loading menu for:', dateFrom, '-', dateTo);
+            
+            const contentDiv = document.getElementById('menuContent');
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Načítám jídelníček...</div>
+                </div>
+            `;
+            
+            try {
+                const data = await fetchMenu(dateFrom, dateTo);
+                displayMenu(data);
+            } catch (error) {
+                console.error('Error:', error);
+                contentDiv.innerHTML = `
+                    <div class="error">
+                        <strong>Chyba:</strong> ${error.message}
+                    </div>
+                `;
+                document.getElementById('rawApiData').textContent = 'Chyba: ' + error.message;
+            }
+        }
+        
+        // Načíst dnešní jídelníček
+        function loadToday() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            document.getElementById('dateFrom').value = todayStr;
+            document.getElementById('dateTo').value = todayStr;
+            
+            loadMenu();
+        }
+        
+        // Inicializace
+        window.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            document.getElementById('dateFrom').value = todayStr;
+            document.getElementById('dateTo').value = todayStr;
+            
+            // Automaticky načíst dnešní menu
+            loadToday();
+        });
+    </script>
+</body>
+</html>
