@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jídelníček - Hamzova léčebna</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #003D7A 0%, #004a99 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid #7FBB00;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .control-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button.primary {
+            background: #003D7A;
+            color: white;
+        }
+
+        button.primary:hover {
+            background: #002d5c;
+        }
+
+        button.secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        button.secondary:hover {
+            background: #e8e8e8;
+        }
+
+        button.accent {
+            background: #7FBB00;
+            color: white;
+        }
+
+        button.accent:hover {
+            background: #6fa300;
+        }
+
+        button.danger {
+            background: #c62828;
+            color: white;
+        }
+
+        button.danger:hover {
+            background: #a01f1f;
+        }
+
+        .quick-nav {
+            padding: 12px 20px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .view-toggle button {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .view-toggle button.active {
+            background: #003D7A;
+            color: white;
+        }
+
+        .allergen-filter {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            display: none;
+        }
+
+        .allergen-filter.show {
+            display: block;
+        }
+
+        .allergen-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .allergen-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .allergen-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .allergen-item label {
+            cursor: pointer;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #003D7A;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            border-left: 4px solid #c62828;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .error strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .error p {
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #2e7d32;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #003D7A;
+            color: #003D7A;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        /* Denní pohled */
+        .date-section {
+            margin-bottom: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        .date-header {
+            background: #003D7A;
+            color: white;
+            padding: 12px 15px;
+            font-weight: 700;
+            font-size: 15px;
+            border-left: 4px solid #7FBB00;
+        }
+
+        .meals-list {
+            background: white;
+        }
+
+        .meal-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            gap: 12px;
+        }
+
+        .meal-item.hidden {
+            display: none;
+        }
+
+        .meal-item:last-child {
+            border-bottom: none;
+        }
+
+        .meal-type {
+            font-weight: 600;
+            color: #666;
+            min-width: 60px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .meal-details {
+            flex: 1;
+        }
+
+        .meal-variant {
+            display: inline-block;
+            background: #FFD700;
+            color: #333;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            margin-right: 6px;
+        }
+
+        .meal-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .allergens {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        /* Týdenní pohled */
+        .week-view {
+            display: none;
+        }
+
+        .week-view.show {
+            display: block;
+        }
+
+        .week-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .week-table th {
+            background: #003D7A;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .week-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+
+        .week-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .week-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .meal-variant-small {
+            display: inline-block;
+            background: #FFD700;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        @media print {
+            .controls, .quick-nav, .allergen-filter, .view-toggle {
+                display: none;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .week-table {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            .control-group input {
+                width: 100%;
+            }
+
+            button {
+                flex: 1;
+            }
+
+            .meal-item {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .meal-type {
+                min-width: auto;
+            }
+
+            .allergen-list {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .view-toggle {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .view-toggle button {
+                flex: 1;
+            }
+
+            .week-table {
+                font-size: 11px;
+            }
+
+            .week-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Jídelníček</h1>
+            <p>Hamzova léčebna - Výdejny stravy</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="selectedDate">Vyberte datum:</label>
+                <input type="date" id="selectedDate">
+            </div>
+            <button class="primary" onclick="loadMenu()">Načíst jídelníček</button>
+            <button class="secondary" onclick="toggleAllergenFilter()">🔍 Filtrovat alergeny</button>
+            <button class="danger" onclick="exportToPDF()">📄 Export PDF</button>
+        </div>
+
+        <div class="allergen-filter" id="allergenFilter">
+            <div style="margin-bottom: 10px; font-weight: 600; font-size: 12px; color: #666;">Skrýt jídla s alergeny:</div>
+            <div class="allergen-list" id="allergenList"></div>
+        </div>
+
+        <div class="quick-nav">
+            <button class="secondary" onclick="loadDate(-1)">← Včera</button>
+            <button class="accent" onclick="loadDate(0)">Dnes</button>
+            <button class="accent" onclick="loadDate(1)">Zítra</button>
+            <button class="secondary" onclick="loadDate(7)">Za týden</button>
+            <div class="view-toggle">
+                <button class="active" onclick="switchView('day')">Denní pohled</button>
+                <button onclick="switchView('week')">Týdenní pohled</button>
+            </div>
+        </div>
+
+        <div id="content" class="content">
+            <div class="info-box">
+                ℹ️ Vyberte datum a klikněte "Načíst jídelníček"
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const OUTLET_ID = 1;
+        const API_URL = 'https://strava.hamzova-lecebna.cz/isp/api/catering/menu/full';
+        let currentData = null;
+        let currentView = 'day';
+        let selectedAllergens = new Set();
+
+        function initializeDates() {
+            const today = new Date();
+            const dateString = today.toISOString().split('T')[0];
+            document.getElementById('selectedDate').value = dateString;
+        }
+
+        function formatDateForAPI(dateString) {
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${year}${month}${day}`;
+        }
+
+        function formatDateForDisplay(dateString) {
+            const date = new Date(dateString);
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('cs-CZ', options);
+        }
+
+        function getDateString(offset) {
+            const date = new Date();
+            date.setDate(date.getDate() + offset);
+            return date.toISOString().split('T')[0];
+        }
+
+        function loadDate(offset) {
+            const dateString = getDateString(offset);
+            document.getElementById('selectedDate').value = dateString;
+            loadMenu();
+        }
+
+        function toggleAllergenFilter() {
+            const filter = document.getElementById('allergenFilter');
+            filter.classList.toggle('show');
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-toggle button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (currentData) {
+                if (view === 'day') {
+                    displayDayView(currentData);
+                } else {
+                    displayWeekView(currentData);
+                }
+            }
+        }
+
+        function getAllergensFromData(data) {
+            const allergens = new Set();
+            if (data.items) {
+                data.items.forEach(item => {
+                    if (item.allergens) {
+                        item.allergens.forEach(allergen => {
+                            allergens.add(JSON.stringify({ code: allergen.code, name: allergen.name }));
+                        });
+                    }
+                });
+            }
+            return Array.from(allergens).map(a => JSON.parse(a));
+        }
+
+        function buildAllergenFilter(allergens) {
+            const filterDiv = document.getElementById('allergenList');
+            filterDiv.innerHTML = '';
+            
+            allergens.forEach(allergen => {
+                const id = `allergen-${allergen.code}`;
+                const item = document.createElement('div');
+                item.className = 'allergen-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="${id}" onchange="updateAllergenFilter()">
+                    <label for="${id}">${allergen.code} - ${allergen.name}</label>
+                `;
+                filterDiv.appendChild(item);
+            });
+        }
+
+        function updateAllergenFilter() {
+            selectedAllergens.clear();
+            document.querySelectorAll('#allergenList input[type="checkbox"]:checked').forEach(checkbox => {
+                const code = checkbox.id.replace('allergen-', '');
+                selectedAllergens.add(code);
+            });
+            
+            if (currentView === 'day') {
+                displayDayView(currentData);
+            } else {
+                displayWeekView(currentData);
+            }
+        }
+
+        function shouldHideMeal(item) {
+            if (selectedAllergens.size === 0) return false;
+            
+            if (!item.allergens) return false;
+            
+            for (let allergen of item.allergens) {
+                if (selectedAllergens.has(allergen.code)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function displayDayView(data, selectedDate) {
+            const content = document.getElementById('content');
+
+            if (!data.items || data.items.length === 0) {
+                content.innerHTML = `<div class="success">✓ Žádná jídla pro vybrané datum (${formatDateForDisplay(selectedDate || document.getElementById('selectedDate').value)})</div>`;
+                return;
+            }
+
+            const dateDisplay = formatDateForDisplay(selectedDate || document.getElementById('selectedDate').value);
+            
+            let html = `<div class="date-section">
+                <div class="date-header">${dateDisplay}</div>
+                <div class="meals-list">`;
+
+            data.items.forEach(item => {
+                const allergenText = item.allergens && item.allergens.length > 0
+                    ? item.allergens.map(a => `${a.code}-${a.name}`).join(', ')
+                    : 'Bez alergenů';
+
+                const hidden = shouldHideMeal(item) ? 'hidden' : '';
+
+                html += `<div class="meal-item ${hidden}">
+                    <div class="meal-type">${item.mealType}</div>
+                    <div class="meal-details">
+                        <span class="meal-variant">Varianta ${item.option}</span>
+                        <div class="meal-name">${item.meal}</div>
+                        <div class="allergens">Alergeny: ${allergenText}</div>
+                    </div>
+                </div>`;
+            });
+
+            html += `</div></div>`;
+            content.innerHTML = html;
+        }
+
+        function displayWeekView(data) {
+            const content = document.getElementById('content');
+            
+            if (!data.items || data.items.length === 0) {
+                content.innerHTML = `<div class="success">✓ Žádná jídla pro vybrané období</div>`;
+                return;
+            }
+
+            // Seskupit jídla podle data
+            const mealsByDate = {};
+            data.items.forEach(item => {
+                if (!mealsByDate[item.date]) {
+                    mealsByDate[item.date] = [];
+                }
+                mealsByDate[item.date].push(item);
+            });
+
+            let html = `<div class="week-view show">
+                <table class="week-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Typ</th>
+                            <th>Varianta</th>
+                            <th>Jídlo</th>
+                            <th>Alergeny</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            Object.keys(mealsByDate).sort().forEach(date => {
+                mealsByDate[date].forEach((item, index) => {
+                    const allergenText = item.allergens && item.allergens.length > 0
+                        ? item.allergens.map(a => `${a.code}`).join(', ')
+                        : '-';
+
+                    const hidden = shouldHideMeal(item) ? 'style="display:none;"' : '';
+
+                    html += `<tr ${hidden}>
+                        <td>${index === 0 ? formatDateForDisplay(date) : ''}</td>
+                        <td>${item.mealType}</td>
+                        <td><span class="meal-variant-small">${item.option}</span></td>
+                        <td>${item.meal}</td>
+                        <td>${allergenText}</td>
+                    </tr>`;
+                });
+            });
+
+            html += `</tbody></table></div>`;
+            content.innerHTML = html;
+        }
+
+        async function loadMenu() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const content = document.getElementById('content');
+
+            if (!selectedDate) {
+                content.innerHTML = '<div class="error"><strong>⚠️ Prosím vyberte datum.</strong></div>';
+                return;
+            }
+
+            const beg = formatDateForAPI(selectedDate);
+            const end = beg;
+
+            content.innerHTML = '<div class="loading"><span class="spinner"></span>Načítám jídelníček...</div>';
+
+            try {
+                const baseUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+                const proxyUrl = `${baseUrl}/api/menu/proxy?outlet=${OUTLET_ID}&beg=${beg}&end=${end}`;
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentData = data;
+                    
+                    // Vytvořit filtr alergenů
+                    const allergens = getAllergensFromData(data);
+                    buildAllergenFilter(allergens);
+                    
+                    // Zobrazit podle aktuálního pohledu
+                    if (currentView === 'day') {
+                        displayDayView(data, selectedDate);
+                    } else {
+                        displayWeekView(data);
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Chyba:', error);
+                content.innerHTML = `<div class="error">
+                    <strong>❌ Chyba: Nepodařilo se načíst data</strong>
+                    <p style="margin-top: 10px; font-size: 12px;">
+                        ${error.message}
+                    </p>
+                </div>`;
+            }
+        }
+
+        function exportToPDF() {
+            if (!currentData) {
+                alert('Nejdříve načtěte jídelníček');
+                return;
+            }
+
+            const element = document.getElementById('content');
+            const opt = {
+                margin: 10,
+                filename: `jidelnicek-${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.addEventListener('DOMContentLoaded', initializeDates);
+    </script>
+</body>
+</html>
