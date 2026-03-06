@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jídelníček - Hamzova léčebna</title>
+  <meta name="description" content="Aktuální jídelníček Hamzovy léčebny" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+        /* Reset pro jídelníček */
+        .jidelnicek-container * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .jidelnicek-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #ffffff;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 100%;
+        }
+        
+        /* Kompaktní hlavička - není sticky */
+        .jidelnicek-header {
+            background: #f8f8f8;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        /* Výběr data - kompaktní */
+        .date-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #001489;
+            margin-bottom: 10px;
+        }
+        
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .date-selector label {
+            font-weight: 500;
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .date-selector input[type="date"] {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        
+        .date-selector button {
+            padding: 5px 12px;
+            background: #001489;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+        
+        .date-selector button:hover {
+            background: #00104a;
+        }
+        
+        .date-selector button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* Kompaktní navigace týdnů */
+        .week-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .week-navigation button {
+            padding: 4px 10px;
+            background: #f5f5f5;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .week-navigation button:hover {
+            background: #e8e8e8;
+            border-color: #001489;
+        }
+        
+        .week-navigation button.active {
+            background: #001489;
+            color: white;
+            border-color: #001489;
+        }
+        
+        .week-navigation button:disabled {
+            background: #fafafa;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* Obsah jídelníčku */
+        .menu-content-wrapper {
+            padding: 0;
+        }
+        
+        /* Kontejner pro dny */
+        .menu-day {
+            background: #f9f9f9;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        /* Datum na jednom řádku */
+        .menu-date {
+            font-size: 16px;
+            font-weight: 600;
+            color: #001489;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .today-badge {
+            background: #97D700;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+        
+        /* Sekce jídel - kompaktní */
+        .meal-section {
+            background: white;
+            border: 1px solid #e8e8e8;
+            border-radius: 3px;
+            padding: 8px;
+            margin-bottom: 6px;
+        }
+        
+        /* Řádek s typem jídla a variantou */
+        .meal-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .meal-type {
+            color: #001489;
+        }
+        
+        .meal-variant {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        /* Název jídla */
+        .meal-name {
+            font-size: 13px;
+            color: #000;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        /* Alergeny - kompaktní */
+        .allergens {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
+        }
+        
+        .allergen-label {
+            color: #444;
+            font-weight: 500;
+        }
+        
+        /* Prázdný jídelníček */
+        .no-menu {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
+        }
+        
+        /* Načítání */
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #001489;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Chybová hláška */
+        .error {
+            background: #fff3e0;
+            border: 1px solid #ffcc80;
+            color: #e65100;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        
+        /* PDF tlačítko */
+        .pdf-btn {
+            padding: 5px 12px;
+            background: #c0392b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .pdf-btn:hover { background: #962d22; }
+        .pdf-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Skrytá PDF hlavička – renderuje se pouze při generování PDF */
+        #pdfHeader {
+            display: none;
+            padding: 0 0 14px 0;
+            border-bottom: 2px solid #001489;
+            margin-bottom: 16px;
+        }
+        #pdfHeader .pdf-nazev {
+            font-size: 18px;
+            font-weight: 700;
+            color: #001489;
+        }
+        #pdfHeader .pdf-obdobi {
+            font-size: 13px;
+            color: #444;
+            margin-top: 3px;
+        }
+        #pdfHeader .pdf-footer-note {
+            font-size: 11px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        /* Responsivní design */
+        @media (max-width: 768px) {
+            .date-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .date-selector {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .week-navigation button {
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+            
+            .meal-section {
+                padding: 6px;
+            }
+        }
+        
+        /* Desktop optimalizace */
+        @media (min-width: 769px) {
+            .meal-section {
+                display: flex;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .meal-header {
+                min-width: 140px;
+            }
+            
+            .meal-details {
+                flex: 1;
+            }
+        }
+  </style>
+</head>
+
+<body>
+  <div class="jidelnicek-container">
+    <div class="jidelnicek-header">
+      <div class="date-controls">
+        <div class="date-selector">
+          <label for="dateFrom">Od:</label>
+          <input type="date" id="dateFrom" />
+          <label for="dateTo">Do:</label>
+          <input type="date" id="dateTo" />
+          <!-- DOPLNĚNO: skutečné tlačítko -->
+          <button type="button" onclick="loadMenu()">Načíst</button>
+        </div>
+      </div>
+
+      <div class="week-navigation">
+        <!-- DOPLNĚNO: id + onclick, aby fungovalo -->
+        <button type="button" id="prevWeekBtn" onclick="loadPreviousWeek()">← Předchozí</button>
+        <button type="button" id="currentWeekBtn" class="active" onclick="loadCurrentWeek()">Aktuální týden</button>
+        <button type="button" id="nextWeekBtn" onclick="loadNextWeek()">Následující →</button>
+        <button type="button" id="todayBtn" onclick="loadToday()">Dnes</button>
+        <button type="button" id="tomorrowBtn" onclick="loadTomorrow()">Zítra</button>
+        <button type="button" id="pdfBtn" class="pdf-btn" onclick="generatePDF()">⬇ Stáhnout PDF</button>
+      </div>
+    </div>
+
+    <div class="menu-content-wrapper">
+      <!-- Skrytá hlavička pro PDF -->
+      <div id="pdfHeader">
+        <div class="pdf-nazev">Hamzova odborná léčebna pro děti a dospělé</div>
+        <div class="pdf-nazev" style="font-size:15px; margin-top:2px;">Jídelníček</div>
+        <div class="pdf-obdobi" id="pdfObdobi"></div>
+        <div class="pdf-footer-note">Změna jídelního lístku vyhrazena. &nbsp;|&nbsp; Tel.: 469 648 162, 469 648 118</div>
+      </div>
+      <div id="menuContent">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <div>Načítám jídelníček...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+        // Konfigurace
+        const API_BASE_URL = 'https://strava.hamzova-lecebna.cz/isp/api/catering/menu/full';
+        const VYDEJNY_ID = 1;
+        
+        let isLoading = false;
+        let lastMenuData = null;
+        
+        // Pomocné funkce pro formátování datumů
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+        
+        function parseDateFromApi(dateStr) {
+            // API vrací formát DD.MM.YYYY
+            if (!dateStr) return null;
+            
+            const parts = dateStr.split('.');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1;
+                const year = parseInt(parts[2]);
+                return new Date(year, month, day);
+            }
+            
+            return null;
+        }
+        
+        function formatDateCzech(dateStr) {
+            const date = parseDateFromApi(dateStr);
+            if (!date) return dateStr;
+            
+            const days = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+            const months = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 
+                          'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+            
+            const dayName = days[date.getDay()];
+            const day = date.getDate();
+            const monthName = months[date.getMonth()];
+            const year = date.getFullYear();
+            
+            // Kontrola dnešního data
+            const today = new Date();
+            const isToday = date.getDate() === today.getDate() && 
+                          date.getMonth() === today.getMonth() && 
+                          date.getFullYear() === today.getFullYear();
+            
+            // Kontrola zítřejšího data
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const isTomorrow = date.getDate() === tomorrow.getDate() && 
+                              date.getMonth() === tomorrow.getMonth() && 
+                              date.getFullYear() === tomorrow.getFullYear();
+            
+            // Vše na jednom řádku
+            let result = `${dayName}, ${day}. ${monthName} ${year}`;
+            
+            if (isToday) {
+                result += '<span class="today-badge">Dnes</span>';
+            } else if (isTomorrow) {
+                result += '<span class="today-badge" style="background: #2196F3;">Zítra</span>';
+            }
+            
+            return result;
+        }
+        
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+        
+        function getWeekEnd(date) {
+            const start = getWeekStart(date);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            return end;
+        }
+        
+        function setLoadingState(loading) {
+            isLoading = loading;
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = loading;
+            });
+        }
+        
+
+        
+        // Přímé volání API
+        async function fetchMenu(dateFrom, dateTo) {
+            const url = `${API_BASE_URL}/${VYDEJNY_ID}?beg=${dateFrom}&end=${dateTo}`;
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server vrátil chybu: ${response.status}`);
+                }
+
+                const rawData = await response.json();
+
+                // API vrací { items: [...] }
+                if (rawData && Array.isArray(rawData.items)) {
+                    return rawData.items;
+                }
+                if (Array.isArray(rawData)) {
+                    return rawData;
+                }
+                return [];
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('Server neodpovídá. Zkuste to prosím za chvíli.');
+                }
+                throw new Error('Nepodařilo se připojit k serveru. Zkuste to prosím později.');
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        // Zobrazení jídelníčku
+        function displayMenu(data) {
+            const contentDiv = document.getElementById('menuContent');
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                contentDiv.innerHTML = '<div class="no-menu">Pro vybrané období není k dispozici žádný jídelníček.</div>';
+                return;
+            }
+            
+            // Seskupení dat podle data
+            const menuByDate = {};
+            
+            data.forEach(item => {
+                if (!item.date) return;
+                
+                const mealType = item.mealType || item.meal_type;
+                if (!mealType) return;
+                
+                if (!menuByDate[item.date]) {
+                    menuByDate[item.date] = {};
+                }
+                
+                if (!menuByDate[item.date][mealType]) {
+                    menuByDate[item.date][mealType] = [];
+                }
+                menuByDate[item.date][mealType].push(item);
+            });
+            
+            // Vytvoření HTML
+            let html = '';
+            
+            // Seřadit data podle datumu
+            const sortedDates = Object.keys(menuByDate).sort((a, b) => {
+                const dateA = parseDateFromApi(a);
+                const dateB = parseDateFromApi(b);
+                return dateA - dateB;
+            });
+            
+            sortedDates.forEach(date => {
+                html += '<div class="menu-day">';
+                html += `<div class="menu-date">${formatDateCzech(date)}</div>`;
+                html += '<div class="menu-content">';
+                
+                // Preferované pořadí jídel
+                const mealOrder = ['Snídaně', 'Oběd', 'Svačina', 'Večeře', 'Druhá večeře'];
+                
+                // Zobrazit jídla v preferovaném pořadí
+                mealOrder.forEach(preferredType => {
+                    const actualType = Object.keys(menuByDate[date]).find(type => 
+                        type.toLowerCase() === preferredType.toLowerCase()
+                    );
+                    
+                    if (actualType && menuByDate[date][actualType]) {
+                        // Seřadit varianty
+                        menuByDate[date][actualType].sort((a, b) => {
+                            const optA = a.option || '';
+                            const optB = b.option || '';
+                            return optA.localeCompare(optB);
+                        });
+                        
+                        menuByDate[date][actualType].forEach(meal => {
+                            html += '<div class="meal-section">';
+                            
+                            html += '<div class="meal-header">';
+                            html += `<span class="meal-type">${actualType}</span>`;
+                            if (meal.option && meal.option.trim()) {
+                                html += `<span class="meal-variant">- Varianta ${meal.option}</span>`;
+                            }
+                            html += '</div>';
+                            
+                            html += '<div class="meal-details">';
+                            html += `<div class="meal-name">${meal.meal || 'Bez názvu'}</div>`;
+                            
+                            if (meal.allergens && Array.isArray(meal.allergens) && meal.allergens.length > 0) {
+                                html += '<div class="allergens">';
+                                html += '<span class="allergen-label">Alergeny:</span> ';
+                                const sortedAllergens = [...meal.allergens].sort((a, b) => {
+                                    const codeA = parseInt(a.code) || 999;
+                                    const codeB = parseInt(b.code) || 999;
+                                    return codeA - codeB;
+                                });
+                                html += sortedAllergens.map(a => `${a.code}-${a.name}`).join(', ');
+                                html += '</div>';
+                            }
+                            html += '</div>';
+                            
+                            html += '</div>';
+                        });
+                    }
+                });
+                
+                // Ostatní typy jídel
+                Object.keys(menuByDate[date]).forEach(mealType => {
+                    const isInOrder = mealOrder.some(ordered => 
+                        ordered.toLowerCase() === mealType.toLowerCase()
+                    );
+                    
+                    if (!isInOrder) {
+                        menuByDate[date][mealType].forEach(meal => {
+                            html += '<div class="meal-section">';
+                            html += '<div class="meal-header">';
+                            html += `<span class="meal-type">${mealType}</span>`;
+                            if (meal.option && meal.option.trim()) {
+                                html += `<span class="meal-variant">- Varianta ${meal.option}</span>`;
+                            }
+                            html += '</div>';
+                            html += '<div class="meal-details">';
+                            html += `<div class="meal-name">${meal.meal || 'Bez názvu'}</div>`;
+                            
+                            if (meal.allergens && Array.isArray(meal.allergens) && meal.allergens.length > 0) {
+                                html += '<div class="allergens">';
+                                html += '<span class="allergen-label">Alergeny:</span> ';
+                                html += meal.allergens.map(a => `${a.code}-${a.name}`).join(', ');
+                                html += '</div>';
+                            }
+                            html += '</div>';
+                            html += '</div>';
+                        });
+                    }
+                });
+                
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            contentDiv.innerHTML = html || '<div class="no-menu">Žádná jídla k zobrazení.</div>';
+        }
+        
+        function displayError(message) {
+            const contentDiv = document.getElementById('menuContent');
+            contentDiv.innerHTML = `
+                <div class="error">
+                    <strong>⚠️ Chyba při načítání jídelníčku</strong><br>
+                    ${message}
+                </div>
+            `;
+        }
+        
+        // Načtení jídelníčku
+        async function loadMenu() {
+            if (isLoading) return;
+            
+            const dateFromInput = document.getElementById('dateFrom');
+            const dateToInput = document.getElementById('dateTo');
+            
+            if (!dateFromInput.value || !dateToInput.value) {
+                displayError('Vyberte prosím období "Od" a "Do".');
+                return;
+            }
+
+            const dateFrom = formatDate(new Date(dateFromInput.value));
+            const dateTo = formatDate(new Date(dateToInput.value));
+            
+            const contentDiv = document.getElementById('menuContent');
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Načítám jídelníček...</div>
+                </div>
+            `;
+            
+            setLoadingState(true);
+            
+            try {
+                const data = await fetchMenu(dateFrom, dateTo);
+                lastMenuData = data;
+                displayMenu(data);
+            } catch (error) {
+                console.error('Error loading menu:', error);
+                displayError(error.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+        
+        // Formátování data v lokálním čase (bez UTC posunu)
+        function toLocalDateString(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // Navigace
+        function updateActiveButton(activeBtn) {
+            document.querySelectorAll('.week-navigation button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (activeBtn) {
+                document.getElementById(activeBtn).classList.add('active');
+            }
+        }
+        
+        function loadCurrentWeek() {
+            const today = new Date();
+            const weekStart = getWeekStart(today);
+            const weekEnd = getWeekEnd(today);
+            
+            document.getElementById('dateFrom').value = toLocalDateString(weekStart);
+            document.getElementById('dateTo').value = toLocalDateString(weekEnd);
+            
+            updateActiveButton('currentWeekBtn');
+            loadMenu();
+        }
+        
+        function loadPreviousWeek() {
+            const currentFromValue = document.getElementById('dateFrom').value;
+            // Bug 2: ochrana proti prázdnému nebo neplatnému poli
+            const currentFrom = currentFromValue ? new Date(currentFromValue) : new Date();
+            if (isNaN(currentFrom.getTime())) {
+                loadCurrentWeek();
+                return;
+            }
+            const weekStart = new Date(currentFrom);
+            weekStart.setDate(currentFrom.getDate() - 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('dateFrom').value = toLocalDateString(weekStart);
+            document.getElementById('dateTo').value = toLocalDateString(weekEnd);
+            
+            updateActiveButton('prevWeekBtn');
+            loadMenu();
+        }
+        
+        function loadNextWeek() {
+            const currentFromValue = document.getElementById('dateFrom').value;
+            // Bug 2: ochrana proti prázdnému nebo neplatnému poli
+            const currentFrom = currentFromValue ? new Date(currentFromValue) : new Date();
+            if (isNaN(currentFrom.getTime())) {
+                loadCurrentWeek();
+                return;
+            }
+            const weekStart = new Date(currentFrom);
+            weekStart.setDate(currentFrom.getDate() + 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('dateFrom').value = toLocalDateString(weekStart);
+            document.getElementById('dateTo').value = toLocalDateString(weekEnd);
+            
+            updateActiveButton('nextWeekBtn');
+            loadMenu();
+        }
+        
+        function loadToday() {
+            const today = new Date();
+            
+            document.getElementById('dateFrom').value = toLocalDateString(today);
+            document.getElementById('dateTo').value = toLocalDateString(today);
+            
+            updateActiveButton('todayBtn');
+            loadMenu();
+        }
+        
+        function loadTomorrow() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            document.getElementById('dateFrom').value = toLocalDateString(tomorrow);
+            document.getElementById('dateTo').value = toLocalDateString(tomorrow);
+            
+            updateActiveButton('tomorrowBtn');
+            loadMenu();
+        }
+        
+        // Generování PDF
+        const DEJAVU_FONT = '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/w3+Yf7w/2EAAP+QAAAAAAAAAAD/kAAAAAAAAAAAAAAAAAAAAAAAAP7mAAAAAP7wAAAAAP+3AAAAAP7wAAAAAAAA/xUAAAAAAAAAAAAAAAAAAP/cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/3AAAAAAAAAAA/5D/a/+3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/cAAAAAP/cAAD/3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/3AAAAAD/twAAAAAAAAAAAAD/twAAAAAAAP/BAAAAAAAA/7cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACb/3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/8EAAAAAAAAAAP99/0T/3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/T/9z/0wAA/9wAAAAA/9z/0//cAAAAAAAAAAAAAP/JAAD/0wBIAAD/yf9h/5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/RP+QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/cAAD/wQAAAAAAAAAAAAD/wQAAAAAAAAAAAAAAAAAAAAD/3AAA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';
+
+        async function loadLogoBase64() {
+            try {
+                const res = await fetch('https://www.hamzova-lecebna.cz/skins/hamzova-lecebna.cz_lego2/images/hamzova-lecebna-logo.svg');
+                if (!res.ok) return null;
+                const blob = await res.blob();
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = () => resolve(null);
+                    reader.readAsDataURL(blob);
+                });
+            } catch { return null; }
+        }
+
+        async function generatePDF() {
+            if (!lastMenuData || lastMenuData.length === 0) {
+                alert('Nejprve na\u010dt\u011bte j\u00eddeln\u00ed\u010dek.');
+                return;
+            }
+            const pdfBtn = document.getElementById('pdfBtn');
+            pdfBtn.disabled = true;
+            pdfBtn.textContent = 'Generuji PDF\u2026';
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+                doc.addFileToVFS('DejaVuSans.ttf', DEJAVU_FONT);
+                doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
+                doc.setFont('DejaVuSans');
+
+                // Barvy Hamzovy léčebny
+                const blue       = [0, 20, 137];       // Reflex Blue #001489
+                const green      = [151, 215, 0];       // Pantone 375 #97D700
+                const lightGreen = [237, 248, 204];     // světle zelená pro zebra řádky
+                const darkGray   = [50, 50, 50];
+                const midGray    = [120, 120, 120];
+                const amber      = [140, 90, 0];
+
+                const margin    = 12;
+                const pageW     = 210;
+                const pageH     = 297;
+                const contentW  = pageW - margin * 2;
+                const footerH   = 14;
+                const footerY   = pageH - footerH;
+                const varColW   = 13;
+                const nameX     = margin + varColW + 2;
+                const nameW     = contentW - varColW - 2;
+                let y = margin;
+
+                function checkPage(needed) {
+                    if (y + needed > footerY - 2) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                }
+
+                // =====================
+                // HLAVIČKA
+                // =====================
+                // Modrý pruh přes celou šířku
+                doc.setFillColor(...blue);
+                doc.rect(margin, y, contentW, 16, 'F');
+
+                // Logo
+                const logoData = await loadLogoBase64();
+                if (logoData) {
+                    try {
+                        doc.addImage(logoData, 'SVG', margin + 2, y + 2, 28, 12);
+                    } catch(e) {
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFontSize(8);
+                        doc.text('HAMZOVA L\u00c9\u010cEBNA', margin + 4, y + 9);
+                    }
+                } else {
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(8);
+                    doc.text('HAMZOVA L\u00c9\u010cEBNA', margin + 4, y + 9);
+                }
+
+                // Název dokumentu
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.text('J\u00eddeln\u00ed\u010dek', margin + 34, y + 8);
+                doc.setFontSize(7.5);
+                doc.setTextColor(200, 210, 255);
+                doc.text('Hamzova odborn\u00e1 l\u00e9\u010debna pro d\u011bti a dosp\u011bl\u00e9', margin + 34, y + 13);
+
+                // Období vpravo
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo   = document.getElementById('dateTo').value;
+                if (dateFrom) {
+                    const fmt = s => { const d = new Date(s); return d.getDate() + '. ' + (d.getMonth()+1) + '. ' + d.getFullYear(); };
+                    const obdobi = dateFrom === dateTo ? fmt(dateFrom) : fmt(dateFrom) + ' \u2013 ' + fmt(dateTo);
+                    doc.setFontSize(8);
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(obdobi, pageW - margin - 2, y + 9, { align: 'right' });
+                }
+
+                y += 20;
+
+                // =====================
+                // JÍDELNÍČEK
+                // =====================
+                const menuByDate = {};
+                lastMenuData.forEach(item => {
+                    if (!item.date) return;
+                    const mt = item.mealType || item.meal_type;
+                    if (!mt) return;
+                    if (!menuByDate[item.date]) menuByDate[item.date] = {};
+                    if (!menuByDate[item.date][mt]) menuByDate[item.date][mt] = [];
+                    menuByDate[item.date][mt].push(item);
+                });
+
+                const sortedDates = Object.keys(menuByDate).sort((a, b) => {
+                    const parse = s => {
+                        let m;
+                        if ((m = s.match(/^(\d{4})-?(\d{2})-?(\d{2})$/))) return m[1]+m[2]+m[3];
+                        if ((m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return m[3]+m[2].padStart(2,'0')+m[1].padStart(2,'0');
+                        return s;
+                    };
+                    return parse(a).localeCompare(parse(b));
+                });
+
+                const dayNames   = ['Ned\u011ble', 'Pond\u011bl\u00ed', '\u00dater\u00fd', 'St\u0159eda', '\u010ctvrtek', 'P\u00e1tek', 'Sobota'];
+                const monthNames = ['ledna', '\u00fanora', 'b\u0159ezna', 'dubna', 'kv\u011btna', '\u010dervna', '\u010dervence', 'srpna', 'z\u00e1\u0159\u00ed', '\u0159\u00edjna', 'listopadu', 'prosince'];
+                const mealOrder  = ['Sn\u00edd\u010dan\u011b', 'Ob\u011bd', 'Sva\u010dina', 'Ve\u010de\u0159e', 'Druh\u00e1 ve\u010de\u0159e'];
+
+                sortedDates.forEach(dateKey => {
+                    let dateObj = null, m;
+                    if ((m = dateKey.match(/^(\d{4})-?(\d{2})-?(\d{2})$/)))
+                        dateObj = new Date(+m[1], +m[2]-1, +m[3]);
+                    else if ((m = dateKey.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)))
+                        dateObj = new Date(+m[3], +m[2]-1, +m[1]);
+
+                    const dateLabel = dateObj
+                        ? dayNames[dateObj.getDay()] + ', ' + dateObj.getDate() + '. ' + monthNames[dateObj.getMonth()] + ' ' + dateObj.getFullYear()
+                        : dateKey;
+
+                    checkPage(12);
+
+                    // Zelený pruh s datem
+                    doc.setFillColor(...green);
+                    doc.rect(margin, y, contentW, 6.5, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(9);
+                    doc.text(dateLabel, margin + 3, y + 4.6);
+                    y += 8.5;
+
+                    // Jídla
+                    const allTypes = Object.keys(menuByDate[dateKey]);
+                    const ordered  = mealOrder.filter(t => allTypes.find(k => k.toLowerCase() === t.toLowerCase()));
+                    const rest     = allTypes.filter(t => !mealOrder.find(o => o.toLowerCase() === t.toLowerCase()));
+
+                    let mealIndex = 0;
+                    ;[...ordered, ...rest].forEach(preferredType => {
+                        const actualType = allTypes.find(k => k.toLowerCase() === preferredType.toLowerCase()) || preferredType;
+                        const meals = [...(menuByDate[dateKey][actualType] || [])];
+                        meals.sort((a, b) => (a.option||'').localeCompare(b.option||''));
+
+                        meals.forEach(meal => {
+                            const varCode  = (meal.option && meal.option.trim()) ? meal.option.trim() : actualType;
+                            const mealName = meal.meal || 'Bez n\u00e1zvu';
+
+                            // Název jídla wrappovaný do dostupné šířky
+                            const nameLines     = doc.splitTextToSize(mealName, nameW);
+                            let allergenLines   = [];
+                            if (meal.allergens && meal.allergens.length > 0) {
+                                const sorted = [...meal.allergens].sort((a,b) => (+a.code||999) - (+b.code||999));
+                                allergenLines = doc.splitTextToSize(
+                                    'Alergeny: ' + sorted.map(a => a.code + '-' + a.name).join(', '),
+                                    nameW
+                                );
+                            }
+
+                            const blockH = nameLines.length * 3.8 + (allergenLines.length > 0 ? 2 + allergenLines.length * 3.2 : 0) + 3;
+                            checkPage(blockH);
+
+                            // Zebra: sudé řádky světle zelené
+                            if (mealIndex % 2 === 1) {
+                                doc.setFillColor(...lightGreen);
+                                doc.rect(margin, y - 0.5, contentW, blockH, 'F');
+                            }
+
+                            // Kód varianty – modrý, tučnější opticky (větší)
+                            doc.setFontSize(8.5);
+                            doc.setTextColor(...blue);
+                            doc.text(varCode, margin + 2, y + 3.2);
+
+                            // Název jídla
+                            doc.setFontSize(8.5);
+                            doc.setTextColor(...darkGray);
+                            doc.text(nameLines, nameX, y + 3.2);
+                            y += nameLines.length * 3.8;
+
+                            // Alergeny
+                            if (allergenLines.length > 0) {
+                                y += 2;
+                                doc.setFontSize(6.5);
+                                doc.setTextColor(...amber);
+                                doc.text(allergenLines, nameX, y + 0.5);
+                                y += allergenLines.length * 3.2;
+                            }
+
+                            y += 3;
+                            mealIndex++;
+                        });
+                    });
+
+                    y += 2;
+                });
+
+                // =====================
+                // PATIČKA
+                // =====================
+                const totalPages = doc.getNumberOfPages();
+                for (let p = 1; p <= totalPages; p++) {
+                    doc.setPage(p);
+                    // Zelená linka
+                    doc.setDrawColor(...green);
+                    doc.setLineWidth(0.5);
+                    doc.line(margin, footerY, pageW - margin, footerY);
+                    // Text
+                    doc.setFontSize(7);
+                    doc.setTextColor(...midGray);
+                    doc.text('Zm\u011bna j\u00eddeln\u00edho l\u00edstku vyhrazena.  Telefon: 469 648 162, 469 648 118', margin, footerY + 4.5);
+                    doc.setTextColor(...blue);
+                    doc.text(p + '/' + totalPages, pageW - margin, footerY + 4.5, { align: 'right' });
+                }
+
+                const fileDate = (dateFrom || 'export').replace(/-/g, '');
+                doc.save('jidelnicek_' + fileDate + '.pdf');
+
+            } catch(err) {
+                console.error('PDF chyba:', err);
+                alert('PDF se nepoda\u0159ilo vygenerovat: ' + err.message);
+            } finally {
+                pdfBtn.disabled = false;
+                pdfBtn.textContent = '\u2b07 St\u00e1hnout PDF';
+            }
+        }
+
+        // Inicializace
+        window.addEventListener('DOMContentLoaded', function() {
+            loadCurrentWeek();
+        });
+  </script>
+</body>
+</html>
